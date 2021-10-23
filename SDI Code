@@ -1,0 +1,642 @@
+# how to calculate feature importance for each algorithm
+# https://machinelearningmastery.com/calculate-feature-importance-with-python/
+
+
+# actual code starts from this point
+# In[1]:
+
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+# In[82]:
+
+
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+
+# In[2]:
+
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+
+
+# In[3]:
+
+
+import warnings
+warnings.filterwarnings('ignore')
+
+
+# In[4]:
+
+
+# reading the .csv file from desktop location
+
+dataset = pd.read_csv('flow11df_combined.csv')
+
+
+# In[5]:
+
+
+# making the copy of the dataset to make any changes
+
+df = dataset.copy()
+
+
+# In[6]:
+
+
+# getting to see all column in the dataset
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', 100)
+
+
+# In[7]:
+
+
+# printing the shape of the data
+df.shape
+
+
+# In[8]:
+
+
+# printing the dataset dimensions
+
+print(f'The dataset has {df.shape[0]} rows and {df.shape[1]} columns.')
+
+
+# In[9]:
+
+
+# printing the fitst 5 rows of the dataset
+df.head()
+
+
+# # Data Preprocessing + Exploratory Data Analysis
+
+# In[10]:
+
+
+# dropping Unnamed: 0 column
+df.drop('Unnamed: 0', axis=1, inplace=True)
+
+
+# In[11]:
+
+
+# checking if the column is dropped from the above operation
+df.head()
+
+
+# In[12]:
+
+
+# printing dtypes of each column
+df.dtypes
+
+
+# In[13]:
+
+
+# getting the null values in the df
+df.isna().sum()
+
+
+# In[14]:
+
+
+# getting the summary of numerical columns
+df.describe()
+
+
+# In[15]:
+
+
+# creating the list of numerical columns
+
+numerical_columns = list(df.select_dtypes('float64').columns)
+
+
+# In[16]:
+
+
+numerical_columns
+
+
+
+
+
+# ## Target Variable
+
+# In[18]:
+
+
+# 0 is the target variable column
+# getting the counts of both the classes
+df['0'].value_counts()
+
+
+# In[19]:
+
+
+# setting the figure dimensions
+
+sns.set()
+plt.rcParams['figure.figsize'] =10, 8
+
+
+# In[21]:
+
+
+sns.countplot(df['0']);
+
+
+# * The dataset is imbalanced with negative 2100 entrines and positive 396
+
+# In[22]:
+
+
+numerical_columns
+
+
+# #### Checking the distribution of the numerical columns from the numerical_column list
+
+# In[23]:
+
+
+# plotting the distribution of numerical variable
+
+for column in numerical_columns:
+    sns.kdeplot((df[column]));
+    plt.title('Distribution Plot')
+    plt.show()
+
+
+# * From the above graphs, we can say that the columns have different ranges of values with different scales.
+
+# ## EDA on column '6': Height_cm
+
+# In[24]:
+
+
+# checking the total unique values for heights
+df['6'].nunique()
+
+
+# In[25]:
+
+
+# printing the count of each value of the height
+df['6'].value_counts()
+
+
+# In[26]:
+
+
+sns.boxplot(df['6'], df['0']);
+
+
+# In[27]:
+
+
+plt.figure(figsize=(15,12))
+
+sns.countplot(df['6'], hue = df['0']);
+plt.xlabel('Height');
+plt.xticks(rotation=90);
+
+
+# * From above figure we can say that people with height range 150cm to 190cm are more affected with covid than other people.
+
+# * Printing the data of the people with height more than 240cm
+
+# In[28]:
+
+
+df[df['6'] > 240]
+
+
+# * Please cheeck the above data readings and its truthfulness.
+
+# ## Column_7: weight Column
+
+# In[29]:
+
+
+# printing the total unique values of the weights
+df['7'].nunique()
+
+
+# In[33]:
+
+
+df['7'].value_counts().sort_index(ascending =False).head(20)
+
+
+# In[31]:
+
+
+plt.figure(figsize=(15,12));
+sns.countplot(df['7']);
+plt.xticks(rotation= 90);
+
+
+# In[34]:
+
+
+# making the df of the error weights
+df[df['7'] > 300]
+
+
+# * heck the weight values  above 300 in the column_7 listed in the above dataframe
+
+# ## Column_32: Temperature
+
+# In[35]:
+
+
+# printing the total count of unique values in temperature column
+df['32'].nunique()
+
+
+# In[36]:
+
+
+# printing the value count of each temperature value
+df['32'].value_counts().sort_index(ascending= False)
+
+
+# In[37]:
+
+
+sns.boxplot(df['32'])
+
+
+# * Check the temperature values 93.7 and 104.5.
+
+# ## Column_77: "Covid active case prevalence percent by zipcode"
+
+# In[38]:
+
+
+# printing the total counts of unique values
+df['77'].nunique()
+
+
+# In[39]:
+
+
+df['77'].value_counts().sort_index(ascending= False)
+
+
+# In[40]:
+
+
+boolean_columns = list(df.select_dtypes('bool').columns)
+
+
+# In[41]:
+
+
+for column in boolean_columns:
+    sns.countplot(df[column]);
+    plt.show();
+
+
+# ## Label Encoding
+
+# In[45]:
+
+
+df1 = df.copy()
+
+
+# In[46]:
+
+
+df1.head()
+
+
+# ## Target Variable: Colunm_0
+
+# In[47]:
+
+
+# plt.subplot(1, 2)
+
+plt.subplot(1, 2, 1)
+sns.countplot(df1['0']);
+plt.title('Countplot of Each Class')
+
+plt.subplot(1, 2, 2)
+plt.pie(df1['0'].value_counts(), labels = ['Negative', 'Positive'], autopct = '%1.1f%%');
+plt.title('Bar Chart and the percentage of each class in the Dataset');
+
+
+# * From above graphs, wecan say that dataset is imbalanced.
+
+# # Data Preprocessing
+
+# In[48]:
+
+
+# converting the string values into integers
+df1['0'] = df1['0'].apply(lambda x: 1 if x== 'positive' else 0)
+
+
+# In[51]:
+
+
+# checking the total value counts after conversion
+df1['0'].value_counts()
+
+
+# In[52]:
+
+
+df1.head()
+
+
+# In[367]:
+
+
+# checking the dtypes of all columns
+df1.dtypes
+
+
+# In[54]:
+
+
+# getting the values of the numerical columns
+df1[boolean_columns].head()
+
+
+# In[ ]:
+
+
+# converting the boolean values into integers
+for i in boolean_columns:
+    df1[i] = df1[i].apply(lambda x: 1 if x== True else 0)
+
+
+# In[58]:
+
+
+# printing the dataset after conversion
+df1.head()
+
+
+# In[59]:
+
+
+# checking the dtypes after conversion
+df1.dtypes
+
+
+# ## Dataset with DownSampling: Balanced Dataset
+
+# In[368]:
+
+
+# creating the class 0 and class 1 variables
+count_class_0, count_class_1 = df1['0'].value_counts()
+
+df_class_0 = df1[df1['0'] == 0]
+df_class_1 = df1[df1['0'] == 1]
+
+
+# In[369]:
+
+
+df_class_0.shape, df_class_1.shape
+
+
+# In[370]:
+
+
+df_class_0_under = df_class_0.sample(count_class_1)
+
+
+# In[371]:
+
+
+df_class_0_under.shape
+
+
+# In[372]:
+
+
+df_undersample = pd.concat([df_class_0_under, df_class_1], axis=0)
+
+
+# In[373]:
+
+
+df_undersample.head()
+
+
+# In[374]:
+
+
+# printing the total count of target variable after downsampling
+df_undersample['0'].value_counts()
+
+
+# In[375]:
+
+
+# assigning the columns to  x variable
+X = df_undersample.drop('0', axis=1)
+
+
+# In[376]:
+
+
+# assigning the target variable to y
+y = df_undersample['0']
+
+
+# In[377]:
+
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, 
+                                                    test_size=0.2, 
+                                                    random_state=24)
+
+
+# In[378]:
+
+
+scaler = StandardScaler()
+
+
+# In[379]:
+
+
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+
+# In[380]:
+
+
+y_train.value_counts()
+
+
+# # Logistic Regression
+
+# In[385]:
+
+
+logistic_downsample = LogisticRegression()
+
+
+# In[386]:
+
+
+logistic_downsample.fit(X_train, y_train)
+
+
+# In[387]:
+
+
+y_logistic_down = logistic_downsample.predict(X_test)
+
+
+# In[388]:
+
+
+# accuracy after downsampling
+print(f'Accuracy after downsampling: {(round(accuracy_score(y_test, y_logistic_down), 2))* 100}% ')
+
+
+# In[389]:
+
+
+sns.heatmap(confusion_matrix(y_test, y_logistic_down), annot= True, cmap='coolwarm')
+
+
+# ## Neural Network
+
+# In[390]:
+
+
+model_downsample = Sequential()
+
+
+# In[391]:
+
+
+# adding the first layer
+model_downsample.add(Dense(units = 128, 
+                           kernel_initializer = 'he_uniform',
+                           activation= 'relu',
+                           input_dim = X_train.shape[1]))
+
+
+# In[392]:
+
+
+# second layer
+model_downsample.add(Dense(units = 128,
+                           kernel_initializer = 'he_uniform',
+                           activation= 'relu'))
+
+
+# In[393]:
+
+
+# third layer
+model_downsample.add(Dense(units = 64, 
+                           kernel_initializer = 'he_uniform',
+                           activation='relu'))
+
+
+# In[394]:
+
+
+# output layer
+model_downsample.add(Dense(units=1, 
+                           kernel_initializer= 'glorot_uniform',
+                          activation= 'sigmoid'))
+
+
+# In[395]:
+
+
+# compiling the model
+model_downsample.compile(optimizer= 'adam', 
+                         loss= 'binary_crossentropy',
+                         metrics = ['accuracy'])
+
+
+# In[396]:
+
+
+model_downsample.fit(X_train, y_train, epochs =20)
+
+
+# In[397]:
+
+
+y_pred = model_downsample.predict(X_test)
+
+
+# In[398]:
+
+
+y_ann = []
+
+for sample in y_pred:
+    if sample > 0.5:
+        y_ann.append(1)
+    else:
+        y_ann.append(0)
+
+
+# In[399]:
+
+
+accuracy_score(y_test, y_ann)
+
+
+# In[400]:
+
+
+# feature selection codes:
+
+# Variance Inflation Factor
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+def calculation_vif(x):
+    
+    vif = pd.DataFrame()
+    vif['Variables'] = x.columns
+    
+    vif['VIF'] = [variance_inflation_factor(x.values, i) for i in range(x.shape[1])]
+    
+    return vif
+calculation_vif(X)
+
+
+# correlation code
+# correlation based on threshold
+def correlation(dataset, threshold):
+    corr = dataset.corr()
+    columns = set()
+    
+    for i in range(len(corr.columns)):
+        for j in range(i):
+            
+            if corr.iloc[i, j] > threshold:
+                temp = corr.columns[i]
+                columns.add(temp)
+    return columns
+
